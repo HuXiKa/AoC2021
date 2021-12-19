@@ -2,6 +2,7 @@ package day6
 
 object B extends App {
 
+
     case class F(timer: Int){
         def p = {
             if(timer > 0){
@@ -12,36 +13,27 @@ object B extends App {
         }
     }
 
-    val list = io.Source.stdin.getLines().toList.head.split(",").map(_.toInt).map(F).toList
+    val list = io.Source.stdin.getLines().toList.head.split(",").map(_.toInt)//.map(F).toList
+    var array = Array.fill(9)(BigInt(0))
 
-    println(list)
+    list.foreach(i => array(i) += 1)
 
+    println(array.mkString("Array(", ", ", ")"))
 
-    /*
-        f(1, 1) => 1
-        f(1, 2) => 2
-        f(1, 3) => 2
-        f(1, 4) => 2
-        f(1, 5) => 2
-        f(1, 6) => 2
-        f(1, 7) => 2
-        f(1, 8) => 2
-        f(1, 9) => 3
-        f(1, 10) => 2
-        f(1, 11) => 4
-        f(1, 12) => 2
-    */
-    val i = 1
-    val c = 1
-    println(7-(c-i) % 7)
+    val c = 256
 
-    val r = (c until 0 by -1).foldLeft(list) {
-        case (l, i)  =>
-            //println((i, l.length))
-            l.flatMap(_.p)
+    val r = (c until 0 by -1).foldLeft(array) {
+        case (array, i) =>
+            val r = Array.fill(9)(BigInt(0))
+            1 until 9 foreach (n => r(n - 1) = array(n))
+            if(array(0) > 0) {
+                r(8) = array(0)
+                r(6) += array(0)
+            }
+            //println(r.mkString("Array(", ", ", ")"))
+            r
     }
 
-    println(r)
-    println(r.length)
+    println(r.sum)
 
 }
