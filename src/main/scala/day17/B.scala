@@ -3,86 +3,47 @@ package day17
 object B extends App {
 
     val lines = io.Source.stdin.getLines()
-    val r = lines.next.map(c => Integer.parseInt(c + "", 16)).map(_.toBinaryString).map(s => "0" * (4 - s.length) + s).mkString("")
+    val res = lines.toList
 
-    println(r)
+    val coords = res.head.split("x=").last.split(", y=")
 
-    def b2d(s: String) = BigInt(s, 2)
-
-    sealed trait Packet {
-        def version: BigInt
-        def value: Option[BigInt]
+    case class Probe(x: Int, y: Int, xVelocity: Int, yVelocity: Int){
+        def move = {
+            copy(x = x + xVelocity, y = y + yVelocity, xVelocity = xVelocity + (if(xVelocity<0) 1 else if(xVelocity>0) -1 else 0), yVelocity = yVelocity - 1)
+        }
     }
+    case class Target(x1: Int, x2: Int, y1: Int, y2: Int)
 
-    case class Literal(version: BigInt, value: Option[BigInt]) extends Packet
-    case class Operator(version: BigInt, typeId: BigInt, packets: List[Packet]) extends Packet {
-        def value = {
-            (typeId.intValue, packets.flatMap(_.value)) match {
-                case (0, v) => Option(v.sum)
-                case (1, v) => Option(v.product)
-                case (2, v) => Option(v.min)
-                case (3, v) => Option(v.max)
-                case (5, h :: i :: _) => Option(if(h > i) 1 else 0)
-                case (6, h :: i :: _) => Option(if(h < i) 1 else 0)
-                case (7, h :: i :: _) => Option(if(h == i) 1 else 0)
-                case _ => None
-            }
+    object Target {
+        def of(array: Array[Array[Int]]) = array match {
+            case Array(Array(x1, x2),Array(y1, y2)) => Target(x1,x2,y1,y2)
         }
     }
 
-    object Packet {
-        def parse(xs: String, size: Int = 0, packets: List[Packet] = Nil): (Int, List[Packet]) = {
-            val data = xs.drop(size)
-            val version = b2d(data.take(3))
-            val typeId = b2d(data.substring(3, 6))
-            val (s, p) =
-                if (typeId == 4) parseLiteral(data, version)
-                else parseOperator(data, version, typeId, data(6).asDigit)
-            (size + s, packets :+ p)
+    val t = Target.of(coords.map(_.split("\\.\\.").map(_.trim).map(_.toInt)))
+    val probes =
+        for{
+            x <- 1 to t.x2
+            y <- t.y1 to -t.y1
+        } yield {
+            Probe(0, 0, x, y)
         }
+    println(probes.length)
+    println(t)
 
-        def parseLiteral(xs: String, version: BigInt) = {
-            val (blocks1, blocks0) = xs.drop(6).grouped(5).toList.span(_.head == '1')
-            val value = (blocks1 :+ blocks0.head).map(_.tail).mkString
-            val size = 6 + (blocks1.size + 1) * 5
-            (size, Literal(version, Option(b2d(value))))
-        }
+    def inTarget(x: Int, y: Int) = x >= t.x1 && x <= t.x2 && y >= t.y1 && y <= t.y2
 
-        def parseOperator(xs: String, version: BigInt, typeId: BigInt, lengthId: Int) = {
-            val (size, packets) = lengthId match {
-                case 1 =>
-                    val packetCount = b2d(xs.substring(7, 18))
-                    Iterator
-                      .iterate((7 + 11, List.empty[Packet]))({ case (sz, p) => parse(xs, sz, p) })
-                      .drop(packetCount.intValue)
-                      .next()
-                case _ =>
-                    val packetsSize = b2d(xs.substring(7, 22)) + 7 + 15
-                    Iterator
-                      .iterate((7 + 15, List.empty[Packet]))({ case (sz, p) => parse(xs, sz, p) })
-                      .dropWhile(_._1 < packetsSize)
-                      .next()
-            }
-            (size, Operator(version, typeId, packets))
+    def f(probe: Probe): List[(Int, Int)] = {
+        (probe.x, probe.y) match {
+            case (x,y) if x > t.x2 || y < t.y1 => List((x,y))
+            case (x,y) if inTarget(x,y) => List((x,y))
+            case (x,y) => List((x,y)) ::: f(probe.move)
         }
     }
 
-    val (_, packets) = Packet.parse(r)
-
-    println(packets)
-
-    def s(p: Packet): BigInt = p match {
-        case Literal(version, value) => version
-        case Operator(version, typeId, packets) => version + packets.map(s).sum
-    }
-
-    println(s(packets.head))
-
-    def v(p: Packet) = p match {
-        case Literal(version, value) => value
-        case o@Operator(version, typeId, packets) => o.value
-    }
-
-    println(v(packets.head))
+    //println(probes)
+    val r = probes.map(p => (p,f(p))).filter{case (_, t) => inTarget(t.last._1, t.last._2)}
+    //println(r)
+    println(r.length)
 
 }
